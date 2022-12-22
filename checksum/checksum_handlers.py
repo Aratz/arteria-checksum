@@ -10,7 +10,6 @@ from arteria.web.state import State
 from arteria.web.handlers import BaseRestHandler
 
 from checksum import __version__ as version
-from checksum.lib.jobrunner import LocalQAdapter
 
 log = logging.getLogger(__name__)
 
@@ -93,7 +92,7 @@ class StartHandler(BaseChecksumHandler):
     :param runfolder: name of the runfolder we want to start checksumming for
 
     """
-    def post(self, runfolder):
+    async def post(self, runfolder):
 
         monitored_dir = self.config["monitored_directory"]
         StartHandler._validate_runfolder_exists(runfolder, monitored_dir)
@@ -106,18 +105,17 @@ class StartHandler(BaseChecksumHandler):
         if not StartHandler._validate_md5sum_path(path_to_runfolder, path_to_md5_sum_file):
             raise ArteriaUsageException("{} is not a valid file!".format(path_to_md5_sum_file))
 
-
         md5sum_log_dir = self.config["md5_log_directory"]
-        
+
         if not StartHandler._is_valid_log_dir(md5sum_log_dir):
             raise ArteriaUsageException("{} is not a directory.!".format(md5sum_log_dir))
 
-        md5sum_log_file = "{}/{}_{}".format(md5sum_log_dir,
-                                            runfolder,
-                                            datetime.datetime.now().isoformat())
+        md5sum_log_file = open(
+            f"{md5sum_log_dir}/{runfolder}_{datetime.datetime.now().isoformat()}",
+            mode='w')
 
-        cmd = " ".join(["md5sum -c", path_to_md5_sum_file])
-        job_id = self.runner_service.start(
+        cmd = ["md5sum",  "-c", path_to_md5_sum_file]
+        job_id = await self.runner_service.start(
                 cmd,
                 cwd=monitored_dir,
                 stdout=md5sum_log_file,
@@ -133,7 +131,7 @@ class StartHandler(BaseChecksumHandler):
                 "service_version": version,
                 "link": status_end_point,
                 "state": State.STARTED,
-                "md5sum_log": md5sum_log_file}
+                "md5sum_log": md5sum_log_file.name}
 
         self.set_status(202, reason="started processing")
         self.write_object(response_data)
@@ -152,7 +150,7 @@ class StatusHandler(BaseChecksumHandler):
         """
 
         if job_id:
-            status = {"state": self.runner_service.status(job_id)}
+            status = {"state": self.runner_service.status(int(job_id))}
         else:
             all_status = self.runner_service.status_all()
             status_dict = {}
@@ -180,7 +178,7 @@ class StopHandler(BaseChecksumHandler):
                 self.set_status(200)
             elif job_id:
                 log.info("Attempting to stop job: {}".format(job_id))
-                self.runner_service.stop(job_id)
+                self.runner_service.stop(int(job_id))
                 self.set_status(200)
             else:
                 ArteriaUsageException("Unknown job to stop")

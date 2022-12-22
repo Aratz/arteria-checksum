@@ -10,8 +10,8 @@ from arteria.web.state import State
 
 from checksum.app import routes
 from checksum import __version__ as checksum_version
-from checksum.handlers.checksum_handlers import StartHandler
-from checksum.lib.jobrunner import LocalQAdapter
+from checksum.checksum_handlers import StartHandler
+from checksum.runner_service import RunnerService
 from tests.test_utils import DummyConfig
 
 """
@@ -21,7 +21,7 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
 
     API_BASE="/api/1.0"
 
-    runner_service = LocalQAdapter(nbr_of_cores=2, interval = 2, priority_method = "fifo")
+    runner_service = RunnerService()
 
     def get_app(self):
         return Application(
@@ -68,16 +68,13 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
 
         response_as_json = json.loads(response.body)
 
-        # TODO if we want more tests on the same
-        #      server, this needs to become
-        #      a global variable.
         job_id = 1
 
         self.assertEqual(response.code, 202)
         self.assertEqual(response_as_json["job_id"], job_id)
         self.assertEqual(response_as_json["service_version"], checksum_version)
 
-        expected_link = "http://localhost:{0}/api/1.0/status/{1}".format(self.get_http_port(), job_id)
+        expected_link = "http://127.0.0.1:{0}/api/1.0/status/{1}".format(self.get_http_port(), job_id)
         self.assertEqual(response_as_json["link"], expected_link)
         self.assertEqual(response_as_json["state"], State.STARTED)
 
@@ -92,24 +89,24 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
 
 
     def test_check_status(self):
-        with mock.patch("checksum.lib.jobrunner.LocalQAdapter.status", return_value=State.DONE) as m:
+        with mock.patch("checksum.runner_service.RunnerService.status", return_value=State.DONE) as m:
             response = self.fetch(self.API_BASE + "/status/1")
             response_as_json = json.loads(response.body)
             self.assertEqual(response_as_json["state"], State.DONE)
-            m.assert_called_with("1")
+            m.assert_called_once_with(1)
 
     def test_stop_all_checksum(self):
-        with mock.patch("checksum.lib.jobrunner.LocalQAdapter.stop_all") as m:
+        with mock.patch("checksum.runner_service.RunnerService.stop_all") as m:
             response = self.fetch(self.API_BASE + "/stop/all", method="POST", body="")
             self.assertEqual(response.code, 200)
-            m.assert_called_with()
+            m.assert_called_once()
 
 
     def test_stop_one_checksum(self):
-        with mock.patch("checksum.lib.jobrunner.LocalQAdapter.stop") as m:
+        with mock.patch("checksum.runner_service.RunnerService.stop") as m:
             response = self.fetch(self.API_BASE + "/stop/1", method="POST", body="")
             self.assertEqual(response.code, 200)
-            m.assert_called_with("1")
+            m.assert_called_once_with(1)
 
     def test_version(self):
         response = self.fetch(self.API_BASE + "/version")
@@ -120,7 +117,7 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
         self.assertEqual(json.loads(response.body), expected_result)
 
     def test_raise_exception_on_log_dir_problem(self):
-        with mock.patch("checksum.handlers.checksum_handlers.StartHandler._is_valid_log_dir", return_value=False):
+        with mock.patch("checksum.checksum_handlers.StartHandler._is_valid_log_dir", return_value=False):
             body = {"path_to_md5_sum_file": "md5_checksums"}
             response = self.fetch(
                     self.API_BASE + "/start/ok_checksums",
@@ -128,6 +125,3 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
                     body=json_encode(body))
 
             self.assertEqual(response.code, 500)
-
-
-
