@@ -88,9 +88,9 @@ class Job:
         self._status = arteria_state.CANCELLED
 
 
-class ChecksumService:
+class RunnerService:
     """
-    Class to run and keep track of checksum jobs
+    Class to run and keep track of running jobs
 
     The jobs are kept in a rolling queue, when a new job is added and the
     queue is full, the oldest job is removed (provided it is not still

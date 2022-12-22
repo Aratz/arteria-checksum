@@ -1,5 +1,5 @@
 from arteria.web.state import State as arteria_state
-from checksum.lib.jobrunner import Job, ChecksumService
+from checksum.runner_service import Job, RunnerService
 
 import os
 import tempfile
@@ -91,13 +91,13 @@ class TestJob:
         assert caplog.records[-1].msg == f"Cancelling job {job_id} (`{cmd}`)"
 
 
-class TestCheksumService:
+class TestRunnerService:
     def test_constructor(self):
         """
         Test is it possible to build a service with the given history length.
         """
         history_len = 5
-        checksum_service = ChecksumService(history_len)
+        checksum_service = RunnerService(history_len)
 
         assert checksum_service._job_history.maxlen == history_len
 
@@ -106,7 +106,7 @@ class TestCheksumService:
         """
         Test no two generated ids are the same.
         """
-        checksum_service = ChecksumService(5)
+        checksum_service = RunnerService(5)
 
         max_job = 1000
 
@@ -122,7 +122,7 @@ class TestCheksumService:
         """
         msg = "test"
         stdout = tempfile.NamedTemporaryFile(mode='r')
-        checksum_service = ChecksumService(5)
+        checksum_service = RunnerService(5)
         await checksum_service.start(["echo", msg], stdout=stdout)
 
         checksum_service._job_history[0].wait()
@@ -137,7 +137,7 @@ class TestCheksumService:
         Test a RuntimeError is raised when trying to start a job but the oldest
         item in the queue is still running.
         """
-        checksum_service = ChecksumService(2)
+        checksum_service = RunnerService(2)
         with pytest.raises(RuntimeError):
             for _ in range(5):
                 await checksum_service.start(["sleep", "10"])
@@ -148,7 +148,7 @@ class TestCheksumService:
         Test jobs can be started when the queue is full but all its jobs are
         done.
         """
-        checksum_service = ChecksumService(2)
+        checksum_service = RunnerService(2)
         for _ in range(2):
             job_id = await checksum_service.start(["echo", "test"])
             checksum_service._get_job(job_id).wait()
@@ -162,8 +162,8 @@ class TestCheksumService:
         """
         Test it is possible to start 1000 jobs (almost) simultaneously.
         """
-        n_job = 1000
-        checksum_service = ChecksumService(n_job)
+        n_job = 100
+        checksum_service = RunnerService(n_job)
         await asyncio.gather(
             *[checksum_service.start(["echo", "test"]) for _ in range(n_job)]
         )
@@ -182,7 +182,7 @@ class TestCheksumService:
         """
         Test it is possible to stop a job.
         """
-        checksum_service = ChecksumService(5)
+        checksum_service = RunnerService(5)
         job_id = await checksum_service.start(["sleep", "1"])
         checksum_service.stop(job_id)
         checksum_service.stop(10000)
@@ -195,7 +195,7 @@ class TestCheksumService:
         Test it is possible to stop all jobs.
         """
         n_job = 5
-        checksum_service = ChecksumService(n_job)
+        checksum_service = RunnerService(n_job)
         await asyncio.gather(
             *[checksum_service.start(["sleep", "10"]) for _ in range(n_job)]
         )
@@ -211,7 +211,7 @@ class TestCheksumService:
         """
         Test it is possible to get the status of one job.
         """
-        checksum_service = ChecksumService(5)
+        checksum_service = RunnerService(5)
         job_id = await checksum_service.start(["sleep", "0.05"])
         assert checksum_service.status(job_id) == arteria_state.STARTED
         checksum_service._job_history[0].wait()
@@ -223,7 +223,7 @@ class TestCheksumService:
         Test getting status of a non-existing job.
         """
         n_job = 5
-        checksum_service = ChecksumService(n_job)
+        checksum_service = RunnerService(n_job)
         await asyncio.gather(
             *[checksum_service.start(["echo", "test"]) for _ in range(n_job)]
         )
@@ -236,7 +236,7 @@ class TestCheksumService:
         Test getting the status of all jobs.
         """
         n_job = 5
-        checksum_service = ChecksumService(n_job)
+        checksum_service = RunnerService(n_job)
         await asyncio.gather(
             *[checksum_service.start(["echo", "test"]) for _ in range(n_job)]
         )

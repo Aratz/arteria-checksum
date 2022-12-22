@@ -3,8 +3,9 @@ from tornado.web import URLSpec as url
 
 from arteria.web.app import AppService
 
-from checksum.handlers.checksum_handlers import VersionHandler, StartHandler, StatusHandler, StopHandler
-from checksum.lib.jobrunner import LocalQAdapter
+from checksum.checksum_handlers import VersionHandler, StartHandler, StatusHandler, StopHandler
+from checksum.runner_service import RunnerService
+
 
 def routes(**kwargs):
     """
@@ -28,7 +29,9 @@ def start():
 
     app_svc = AppService.create(__package__)
 
-    number_of_cores_to_use = app_svc.config_svc["number_of_cores"]
-    runner_service = LocalQAdapter(nbr_of_cores=number_of_cores_to_use, interval = 2, priority_method = "fifo")
+    history_len = app_svc.config_svc["history_len"]
+    runner_service = RunnerService(history_len=history_len)
 
-    app_svc.start(routes(config=app_svc.config_svc, runner_service = runner_service))
+    app_svc.start(routes(
+        config=app_svc.config_svc,
+        runner_service=runner_service))

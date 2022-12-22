@@ -117,13 +117,11 @@ class StartHandler(BaseChecksumHandler):
                                             datetime.datetime.now().isoformat())
 
         cmd = " ".join(["md5sum -c", path_to_md5_sum_file])
-        job_id = self.runner_service.start(cmd,
-                                           nbr_of_cores=1,
-                                           run_dir=monitored_dir,
-                                           stdout=md5sum_log_file,
-                                           stderr=md5sum_log_file)
-
-        log.info("Scheduling command: {}".format(cmd))
+        job_id = self.runner_service.start(
+                cmd,
+                cwd=monitored_dir,
+                stdout=md5sum_log_file,
+                stderr=md5sum_log_file)
 
         status_end_point = "{0}://{1}{2}".format(
             self.request.protocol,
