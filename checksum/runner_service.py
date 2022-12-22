@@ -110,7 +110,7 @@ class RunnerService:
         return status of all jobs in the history
     """
 
-    def __init__(self, history_len):
+    def __init__(self, history_len=100):
         """
         Parameters
         ----------
