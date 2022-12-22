@@ -175,6 +175,10 @@ class RunnerService:
         ------
         RuntimeError
             if the history is full and the oldest job is still running
+
+        Returns
+        -------
+        job_id: int
         """
         if (
             self._job_history.maxlen == len(self._job_history)
