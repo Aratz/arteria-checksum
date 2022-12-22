@@ -129,7 +129,9 @@ class TestRunnerService:
         stdout.seek(0)
 
         assert stdout.read() == f"{msg}\n"
-        assert checksum_service._job_history[0].get_status() == arteria_state.DONE
+
+        status = checksum_service._job_history[0].get_status() 
+        assert status == arteria_state.DONE
 
     @pytest.mark.asyncio
     async def test_list_full(self):
