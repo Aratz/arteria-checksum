@@ -29,16 +29,21 @@ def routes(**kwargs):
     ]
 
 
+def compose_application(config):
+    """Instanciates all services"""
+    return {
+        "config": config,
+        "runner_service": RunnerService(history_len=config["history_len"]),
+        }
+
+
 def start():
     """
     Start the checksum-ws app
     """
-
     app_svc = AppService.create(__package__)
+    config = app_svc.config_svc
 
-    history_len = app_svc.config_svc["history_len"]
-    runner_service = RunnerService(history_len=history_len)
+    composed_service = compose_application(config)
 
-    app_svc.start(routes(
-        config=app_svc.config_svc,
-        runner_service=runner_service))
+    app_svc.start(routes(**composed_service))

@@ -24,9 +24,9 @@ class TestJob:
         job.wait()
 
         assert job.get_status() == arteria_state.DONE
-        assert caplog.records[-1].levelname == "INFO"
-        assert caplog.records[-1].msg == (
-                f"Starting new job with id {job_id} and command: `{cmd}`")
+        assert caplog.records[0].levelname == "INFO"
+        assert caplog.records[0].msg == (
+                f"Starting:\n job id: {job_id}\n cmd: {cmd}")
 
     def test_stdout_to_file(self):
         """

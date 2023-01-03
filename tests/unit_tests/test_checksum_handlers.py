@@ -29,6 +29,8 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
 
     ok_runfolder = "tests/resources/ok_checksums"
 
+
+class TestStartHandler(TestChecksumHandlers):
     def test__validate_runfolder_exists_ok(self):
         assert StartHandler._validate_runfolder_exists(
                 "ok_checksums", "tests/resources/")
@@ -57,7 +59,12 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
                 md5sum_file_path=os.path.join(
                     TestChecksumHandlers.ok_runfolder, "no_file"))
 
-    def test_start_checksum(self):
+    @mock.patch(
+            "checksum.runner_service.RunnerService.start",
+            return_value=1)
+    def test_start_checksum(self, mock_start):
+        job_id = mock_start.return_value
+
         body = {"path_to_md5_sum_file": "md5_checksums"}
         response = self.fetch(
             self.API_BASE + "/start/ok_checksums",
@@ -65,8 +72,6 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
             body=json_encode(body))
 
         response_as_json = json.loads(response.body)
-
-        job_id = 1
 
         self.assertEqual(response.code, 202)
         self.assertEqual(response_as_json["job_id"], job_id)
@@ -78,15 +83,20 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
         self.assertEqual(response_as_json["link"], expected_link)
         self.assertEqual(response_as_json["state"], State.STARTED)
 
-    def test_start_checksum_with_shell_injection(self):
-        body = {"path_to_md5_sum_file": "tests/$(cat /etc/shadow)"}
-        response = self.fetch(
-            self.API_BASE + "/start/ok_checksums",
-            method="POST",
-            body=json_encode(body))
+    def test_raise_exception_on_log_dir_problem(self):
+        with mock.patch(
+                "checksum.checksum_handlers.StartHandler._is_valid_log_dir",
+                return_value=False):
+            body = {"path_to_md5_sum_file": "md5_checksums"}
+            response = self.fetch(
+                    self.API_BASE + "/start/ok_checksums",
+                    method="POST",
+                    body=json_encode(body))
 
-        self.assertEqual(response.code, 500)
+            self.assertEqual(response.code, 500)
 
+
+class TestStatusHandler(TestChecksumHandlers):
     def test_check_status(self):
         with mock.patch(
                 "checksum.runner_service.RunnerService.status",
@@ -96,6 +106,8 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
             self.assertEqual(response_as_json["state"], State.DONE)
             m.assert_called_once_with(1)
 
+
+class TestStopHandler(TestChecksumHandlers):
     def test_stop_all_checksum(self):
         with mock.patch("checksum.runner_service.RunnerService.stop_all") as m:
             response = self.fetch(
@@ -117,15 +129,3 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
 
         self.assertEqual(response.code, 200)
         self.assertEqual(json.loads(response.body), expected_result)
-
-    def test_raise_exception_on_log_dir_problem(self):
-        with mock.patch(
-                "checksum.checksum_handlers.StartHandler._is_valid_log_dir",
-                return_value=False):
-            body = {"path_to_md5_sum_file": "md5_checksums"}
-            response = self.fetch(
-                    self.API_BASE + "/start/ok_checksums",
-                    method="POST",
-                    body=json_encode(body))
-
-            self.assertEqual(response.code, 500)

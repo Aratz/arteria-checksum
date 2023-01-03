@@ -43,7 +43,8 @@ class Job:
         self.job_id = job_id
         self.cmd = cmd
         self._status = arteria_state.STARTED
-        log.info(f"Starting new job with id {job_id} and command: `{cmd}`")
+        log.info(f"Starting:\n job id: {job_id}\n cmd: {cmd}")
+        log.debug(f"kwargs: {kwargs}")
         try:
             self._proc = subprocess.Popen(self.cmd, **kwargs)
         except Exception as e:
@@ -67,8 +68,12 @@ class Job:
                 self._status = arteria_state.STARTED
             elif return_code == 0:
                 self._status = arteria_state.DONE
+                log.info(
+                    f"Job {self.job_id} completed successfully")
             else:
                 self._status = arteria_state.ERROR
+                log.error(
+                    f"Job {self.job_id} failed with status code {return_code}")
 
         return self._status
 

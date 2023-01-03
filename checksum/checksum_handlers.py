@@ -121,7 +121,10 @@ class StartHandler(BaseChecksumHandler):
         md5sum_log_file = open(
             f"{md5sum_log_dir}/{runfolder}_{date}", mode='w')
 
-        cmd = ["md5sum",  "-c", path_to_md5_sum_file]
+        relative_path_to_md5sum_file = os.path.join(
+                runfolder, request_data["path_to_md5_sum_file"])
+
+        cmd = ["md5sum",  "-c", relative_path_to_md5sum_file]
         job_id = await self.runner_service.start(
                 cmd,
                 cwd=monitored_dir,
