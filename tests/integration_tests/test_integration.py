@@ -151,6 +151,48 @@ class TestIntegrationSmall(TestIntegration):
 
         assert response.code == 500
 
-    def test_stop(self):
-        pass
 
+class TestIntegrationBig(TestIntegration):
+    def setUp(self):
+        super().setUp()
+
+        self.folder, self.checksum_file = gen_dummy_data(10**7)  # 10MB
+        self.foldername = self.folder.name.split('/')[-1]
+
+    def test_stop(self):
+        url = self.API_BASE + f"/start/{self.foldername}"
+        body = {"path_to_md5_sum_file": self.checksum_file}
+
+        response = self.fetch(url, method="POST", body=json_encode(body))
+
+        assert response.code == 202
+        response_as_json = json.loads(response.body)
+
+        assert response_as_json["state"] == State.STARTED
+
+        job_id = response_as_json["job_id"]
+        link = response_as_json["link"]
+
+        url = self.API_BASE + f"/stop/{job_id}"
+        response = self.fetch(url, method="POST", body="")
+        assert response.code == 200
+
+        status = json.loads(self.fetch(link, method="GET").body)
+        assert status["state"] == State.CANCELLED
+
+    def test_stop_all(self):
+        url = self.API_BASE + f"/start/{self.foldername}"
+        body = {"path_to_md5_sum_file": self.checksum_file}
+        n_jobs = 5
+        for _ in range(n_jobs):
+            self.fetch(url, method="POST", body=json_encode(body))
+
+        url = self.API_BASE + "/stop/all"
+        response = self.fetch(url, method="POST", body="")
+        assert response.code == 200
+
+        url = self.API_BASE + "/status/"
+        assert all(
+            job["state"] == State.CANCELLED
+            for job in json.loads(
+                self.fetch(url, method="GET").body).values())

@@ -87,10 +87,11 @@ class Job:
         """
         Cancel the job.
         """
-        log.info(f"Cancelling job {self.job_id} (`{self.cmd}`)")
-        self._proc.terminate()
-        self._proc.wait()
-        self._status = arteria_state.CANCELLED
+        if self.get_status() == arteria_state.STARTED:
+            log.info(f"Cancelling job {self.job_id} (`{self.cmd}`)")
+            self._proc.terminate()
+            self._proc.wait()
+            self._status = arteria_state.CANCELLED
 
 
 class RunnerService:
