@@ -121,7 +121,7 @@ class TestIntegrationSmall(TestIntegration):
 
         assert all(status["state"] == State.DONE for status in statuses)
 
-    def test_status(self):
+    def test_status_all(self):
         """
         Test getting all statuses at the same time.
         """
@@ -134,9 +134,9 @@ class TestIntegrationSmall(TestIntegration):
         url = self.API_BASE + "/status/"
         status_as_json = json.loads(self.fetch(url, method="GET").body)
         assert len(status_as_json) == n_jobs
-        all(
-            state == State.DONE
-            for state in json.loads(
+        assert all(
+            job["state"] == State.DONE
+            for job in json.loads(
                 self.fetch(url, method="GET").body).values())
 
     def test_start_checksum_with_shell_injection(self):
