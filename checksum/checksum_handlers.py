@@ -98,7 +98,10 @@ class StartHandler(BaseChecksumHandler):
         """
 
         monitored_dir = self.config["monitored_directory"]
-        StartHandler._validate_runfolder_exists(runfolder, monitored_dir)
+        if not StartHandler._validate_runfolder_exists(
+                runfolder, monitored_dir):
+            raise ArteriaUsageException(
+                    f"{runfolder} does not exist under {monitored_dir}!")
 
         request_data = json.loads(self.request.body)
 
