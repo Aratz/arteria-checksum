@@ -94,32 +94,36 @@ class TestIntegrationSmall(TestIntegration):
 
     def test_multiple_checksum(self):
         """
-        Test multiple jobs can be launched simultaneously.
+        Test multiple jobs can be launched simultaneously and jobs can still be
+        launched when the history is full.
         """
         url = self.API_BASE + f"/start/{self.foldername}"
         body = {"path_to_md5_sum_file": self.checksum_file}
-        responses = [
-                self.fetch(url, method="POST", body=json_encode(body))
-                for _ in range(10)]
 
-        assert all(response.code == 202 for response in responses)
+        for _ in range(2):
+            responses = [
+                    self.fetch(url, method="POST", body=json_encode(body))
+                    for _ in range(10)]
 
-        for response in responses:
-            response_as_json = json.loads(response.body)
+            assert all(response.code == 202 for response in responses)
 
-            status = self.fetch(response_as_json["link"])
-            status_as_json = json.loads(status.body)
+            for response in responses:
+                response_as_json = json.loads(response.body)
 
-            while status_as_json["state"] == State.STARTED:
-                time.sleep(0.5)
                 status = self.fetch(response_as_json["link"])
                 status_as_json = json.loads(status.body)
 
-        statuses = [
-                json.loads(self.fetch(json.loads(response.body)["link"]).body)
-                for response in responses]
+                while status_as_json["state"] == State.STARTED:
+                    time.sleep(0.5)
+                    status = self.fetch(response_as_json["link"])
+                    status_as_json = json.loads(status.body)
 
-        assert all(status["state"] == State.DONE for status in statuses)
+            statuses = [
+                    json.loads(
+                        self.fetch(json.loads(response.body)["link"]).body)
+                    for response in responses]
+
+            assert all(status["state"] == State.DONE for status in statuses)
 
     def test_status_all(self):
         """

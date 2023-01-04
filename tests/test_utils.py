@@ -7,7 +7,7 @@ import tempfile
 DUMMY_CONFIG = {
     "monitored_directory": "/tmp",
     "md5_log_directory": "/tmp",
-    "history_len": 100,
+    "history_len": 10,
     "port": 9999,
 }
 
