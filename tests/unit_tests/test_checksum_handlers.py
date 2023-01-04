@@ -31,29 +31,35 @@ class TestChecksumHandlers(AsyncHTTPTestCase):
 
 
 class TestStartHandler(TestChecksumHandlers):
-    def test__validate_runfolder_exists_ok(self):
+    @mock.patch("os.path.isdir", return_value=True)
+    @mock.patch("os.listdir", return_value=["ok_checksums", "rf2", "rf3"])
+    def test__validate_runfolder_exists_ok(self, mock_listdir, mock_isdir):
         assert StartHandler._validate_runfolder_exists(
                 "ok_checksums", "tests/resources/")
 
-    def test__validate_runfolder_exists_not_ok(self):
+    @mock.patch("os.path.isdir", return_value=False)
+    def test__validate_runfolder_exists_not_ok(self, mock_isdir):
         assert not StartHandler._validate_runfolder_exists(
                 "invalid_checksums", "tests/resources/")
 
-    def test__validate_md5sum_path_ok(self):
+    @mock.patch("os.path.isfile", return_value=True)
+    def test__validate_md5sum_path_ok(self, mock_isfile):
         assert StartHandler._validate_md5sum_path(
                 runfolder=TestChecksumHandlers.ok_runfolder,
                 md5sum_file_path=os.path.join(
                     TestChecksumHandlers.ok_runfolder, "md5_checksums")
                 )
 
-    def test__validate_md5sum_nested_path_ok(self):
+    @mock.patch("os.path.isfile", return_value=True)
+    def test__validate_md5sum_nested_path_ok(self, mock_isfile):
         nested_runfolder = "tests/resources/ok_nested_dir/"
         assert StartHandler._validate_md5sum_path(
                 runfolder=nested_runfolder,
                 md5sum_file_path=os.path.join(
                     nested_runfolder, "./md5sums/empty_file"))
 
-    def test__validate_md5sum_path_not_ok(self):
+    @mock.patch("os.path.isfile", return_value=False)
+    def test__validate_md5sum_path_not_ok(self, mock_isfile):
         assert not StartHandler._validate_md5sum_path(
                 runfolder=TestChecksumHandlers.ok_runfolder,
                 md5sum_file_path=os.path.join(
@@ -62,7 +68,25 @@ class TestStartHandler(TestChecksumHandlers):
     @mock.patch(
             "checksum.runner_service.RunnerService.start",
             return_value=1)
-    def test_start_checksum(self, mock_start):
+    @mock.patch(
+            "checksum.checksum_handlers"
+            ".StartHandler._validate_runfolder_exists",
+            return_value=True)
+    @mock.patch(
+            "checksum.checksum_handlers"
+            ".StartHandler._validate_md5sum_path",
+            return_value=True)
+    @mock.patch(
+            "checksum.checksum_handlers"
+            ".StartHandler._is_valid_log_dir",
+            return_value=True)
+    def test_start_checksum(
+            self,
+            mock_valid_log,
+            mock_valid_md5sum_path,
+            mock_runfolder_exists,
+            mock_start,
+            ):
         job_id = mock_start.return_value
 
         body = {"path_to_md5_sum_file": "md5_checksums"}
