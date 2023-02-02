@@ -20,4 +20,10 @@ jobs:
         pip install -r requirements/dev .
     - name: Launch tests
       run: |
-        pytest ./tests
+        pytest ./tests --cov-report=xml --cov=checksum
+
+    - name: Upload code coverage report
+      uses: codecov/codecov-action@v1
+      with:
+        if: success()
+        token: ${{ secrets.CODECOV_TOKEN }}
